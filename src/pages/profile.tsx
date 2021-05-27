@@ -1,42 +1,52 @@
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTokenStore } from "../store/useTokenStore";
 
 const ProfilePage = () => {
   const { accessToken, refreshToken, setTokens } = useTokenStore();
+  const [user, setUser] = useState(null);
   const router = useRouter();
   useEffect(() => {
     const fetching = async (url: string) => {
       let counter = 0;
       let accessTokenToFetch = accessToken;
       while (counter < 5) {
-        const data = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessTokenToFetch}` },
-        });
-
-        if (data.status === 200) {
-          return await data.json();
+        try {
+          console.log(counter);
+          const data = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessTokenToFetch}` },
+          }).then((r) => r.json());
+          return { data, accessToken: accessTokenToFetch };
+        } catch {
+          counter++;
+          const newAccessToken = await fetch("/api/refresh", {
+            method: "POST",
+            headers: { "Content-type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          }).then((r) => r.json());
+          if (!newAccessToken) {
+            throw Error("Expired Refresh Token");
+          }
+          accessTokenToFetch = newAccessToken.accessToken;
         }
-
-        const newAccessToken = await fetch("/api/refresh", {
-          method: "POST",
-          headers: { "Content-type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        }).then((r) => r.json());
-        if (!newAccessToken) {
-          return null;
-        }
-        accessTokenToFetch = newAccessToken.accessToken;
-        counter++;
       }
     };
-    const data =  fetching("/api/profile");
-    console.log("data", data);
-    if (!data) {
-      router.push("/");
-    }
+    (async () => {
+      try {
+        const data = await fetching("/api/profile").then((r) => r);
+        await setTokens({ accessToken: data?.accessToken!, refreshToken });
+        console.log(data);
+      } catch (err) {
+        console.log(err);
+        console.log("Logout");
+      }
+    })();
   }, []);
-  return <div className="mx-auto container">I am Profile</div>;
+  return (
+    <div className="mx-auto container">
+      <pre>{user}</pre>
+    </div>
+  );
 };
 
 export default ProfilePage;

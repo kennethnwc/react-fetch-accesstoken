@@ -11,6 +11,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     if (err) {
       return res.status(401).json("expired");
     }
-    return res.status(200).json(decoded);
+    return res.status(200).json({ user: decoded.user });
   });
 }

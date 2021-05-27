@@ -9,7 +9,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!refreshToken) return res.status(403).json(403);
   jwt.verify(refreshToken, "1234", (err, user) => {
     if (err) {
-      return res.status(401).json(401);
+      return res.status(401).json({ error: "refresh token expired" });
     }
     const accessToken = jwt.sign({ user: user.user }, "12345", {
       expiresIn: 10,
